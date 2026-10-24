@@ -1,0 +1,18 @@
+=================================================================
+🍾 ENLACES OFICIALES - CAP ANY SENSE CASA 2026
+=================================================================
+
+👉 TU PANEL DE TAQUILLA (Para ti y organizadores):
+   https://cursor-reception-fda-trip.trycloudflare.com/?pin=2026
+
+👉 ENLACE PARA LOS PORTEROS (Para el personal de seguridad):
+   https://cursor-reception-fda-trip.trycloudflare.com/scanner?pin=puerta
+
+=================================================================
+✅ LA APLICACIÓN YA ESTÁ CORRIENDO EN SEGUNDO PLANO DE TU MAC.
+PUEDES CERRAR LA VENTANA DE TERMINAL POR COMPLETO.
+
+Los enlaces seguirán funcionando mientras tu Mac esté encendido.
+Para apagar la aplicación cuando termine el evento, ejecuta:
+./detener.sh
+=================================================================

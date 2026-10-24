@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entrada #{{ ticket.ticket_number }} - {{ settings.event_name }}</title>
+  <style>
+    :root {
+      --gold-primary: #f59e0b;
+      --gold-light: #fbbf24;
+      --gold-dark: #b45309;
+      --bg-dark: #0b0f19;
+      --card-bg: #111827;
+      --card-border: #374151;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+    }
+
+    .ticket-container {
+      width: 100%;
+      max-width: 440px;
+      background: var(--card-bg);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+      border: 1px solid var(--card-border);
+      position: relative;
+    }
+
+    .ticket-poster-box {
+      width: 100%;
+      max-height: 260px;
+      overflow: hidden;
+      background: #050811;
+      border-bottom: 2px solid var(--gold-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ticket-poster-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .ticket-header {
+      background: linear-gradient(135deg, #1f2937 0%, #111827 50%, #1a1505 100%);
+      padding: 24px 20px;
+      text-align: center;
+      border-bottom: 2px dashed rgba(245, 158, 11, 0.3);
+      position: relative;
+    }
+
+    .badge-event {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gold-light);
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      padding: 4px 12px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+
+    .event-title {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: #fff;
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+
+    .event-date {
+      color: var(--gold-light);
+      font-size: 14px;
+      font-weight: 600;
+      margin-top: 6px;
+    }
+
+    /* Status Banner */
+    .status-banner {
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .status-valida {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      border-bottom: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .status-usada {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+      border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .status-anulada {
+      background: rgba(156, 163, 175, 0.15);
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    /* Ticket Body */
+    .ticket-body {
+      padding: 24px;
+    }
+
+    .ticket-number-display {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #1f2937;
+    }
+    .num-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
+    .num-val { font-size: 22px; font-weight: 800; color: var(--gold-light); font-family: monospace; }
+
+    /* Attendee Info Box */
+    .attendee-box {
+      background: #1a2233;
+      border: 1px solid #2d3748;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 22px;
+    }
+    .field-group { margin-bottom: 12px; }
+    .field-group:last-child { margin-bottom: 0; }
+    .field-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; }
+    .field-value { font-size: 17px; font-weight: 700; color: #fff; margin-top: 2px; }
+    .field-dni { color: var(--gold-light); font-size: 20px; font-family: monospace; letter-spacing: 1px; }
+
+    /* QR Section */
+    .qr-section {
+      background: #ffffff;
+      padding: 18px;
+      border-radius: 16px;
+      text-align: center;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    }
+    #qrcode {
+      display: inline-block;
+      margin: 0 auto;
+    }
+    #qrcode img, #qrcode canvas {
+      display: block;
+      margin: 0 auto;
+    }
+    .qr-caption {
+      color: #111827;
+      font-size: 11px;
+      font-family: monospace;
+      font-weight: 700;
+      margin-top: 8px;
+      letter-spacing: 1px;
+    }
+
+    /* Security Notice */
+    .security-notice {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #fca5a5;
+    }
+    .security-notice strong { color: #fff; display: block; margin-bottom: 4px; }
+
+    /* Buttons */
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      width: 100%;
+      max-width: 440px;
+    }
+    .btn {
+      flex: 1;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: none;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-gold {
+      background: linear-gradient(135deg, var(--gold-primary), var(--gold-dark));
+      color: #000;
+    }
+    .btn-gold:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .btn-secondary {
+      background: #1f2937;
+      color: #fff;
+      border: 1px solid var(--card-border);
+    }
+    .btn-secondary:hover { background: #374151; }
+
+    /* Print styles */
+    @media print {
+      body { background: #fff !important; color: #000 !important; padding: 0 !important; }
+      .ticket-container { box-shadow: none !important; border: 2px solid #000 !important; max-width: 500px !important; margin: 0 auto !important; }
+      .ticket-header { background: #f3f4f6 !important; color: #000 !important; }
+      .event-title { color: #000 !important; }
+      .event-date { color: #374151 !important; }
+      .attendee-box { background: #f9fafb !important; border: 1px solid #ccc !important; }
+      .field-value { color: #000 !important; }
+      .field-dni { color: #000 !important; font-weight: bold !important; }
+      .action-buttons { display: none !important; }
+      .security-notice { background: #fff !important; border: 1px solid #000 !important; color: #000 !important; }
+      .security-notice strong { color: #000 !important; }
+    }
+  </style>
+  <script src="/static/qrcode.min.js"></script>
+</head>
+<body>
+
+  <div class="ticket-container">
+    {% if settings.poster_url %}
+    <div class="ticket-poster-box">
+      <img src="{{ settings.poster_url }}" alt="Cartel Oficial" class="ticket-poster-img">
+    </div>
+    {% endif %}
+    <div class="ticket-header">
+      <div class="badge-event">Entrada Oficial Nominal</div>
+      <h1 class="event-title">{{ settings.event_name }}</h1>
+      <div class="event-date">📅 {{ settings.event_date }} • ⏰ {{ settings.event_time }}</div>
+      <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">📍 {{ settings.event_venue }}</div>
+    </div>
+
+    <!-- Status Banner -->
+    {% if ticket.status == 'VALIDA' %}
+      <div class="status-banner status-valida">
+        <span>●</span> ENTRADA VÁLIDA PARA ACCESO
+      </div>
+    {% elif ticket.status == 'USADA' %}
+      <div class="status-banner status-usada">
+        <span>✕</span> ENTRADA YA UTILIZADA ({{ ticket.used_at }})
+      </div>
+    {% else %}
+      <div class="status-banner status-anulada">
+        <span>⊘</span> ENTRADA ANULADA
+      </div>
+    {% endif %}
+
+    <div class="ticket-body">
+      <div class="ticket-number-display">
+        <span class="num-label">Número de Entrada</span>
+        <span class="num-val">#{{ "%03d"|format(ticket.ticket_number) }} / {{ settings.max_capacity }}</span>
+      </div>
+
+      <div class="attendee-box">
+        <div class="field-group">
+          <div class="field-label">Titular de la Entrada</div>
+          <div class="field-value">{{ ticket.name }} {{ ticket.surname }}</div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">DNI / Documento de Identidad (Nominal)</div>
+          <div class="field-value field-dni">{{ ticket.dni }}</div>
+        </div>
+        {% if ticket.notes %}
+        <div class="field-group">
+          <div class="field-label">Observaciones / Incluye</div>
+          <div class="field-value" style="font-size: 13px; color: #d1d5db;">{{ ticket.notes }}</div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- QR Code Container -->
+      <div class="qr-section">
+        <div id="qrcode"></div>
+        <div class="qr-caption">{{ ticket.code }}</div>
+      </div>
+
+      <div class="security-notice">
+        <strong>⚠️ CONTROL DE ACCESO ESTRICTO:</strong>
+        Esta entrada es <strong>personal e intransferible</strong>. En la puerta de acceso será <strong>obligatorio mostrar el DNI físico original</strong> para cotejar que coincide con el titular. Cada código QR sólo permite un único acceso.
+      </div>
+    </div>
+  </div>
+
+  <div class="action-buttons">
+    <button onclick="window.print()" class="btn btn-gold">
+      🖨️ Imprimir / Guardar en PDF
+    </button>
+    <button onclick="copyTicketLink()" class="btn btn-secondary" id="btnCopy">
+      🔗 Copiar Enlace
+    </button>
+  </div>
+
+  <script>
+    // Generate QR Code with unique code
+    window.onload = function() {
+      new QRCode(document.getElementById("qrcode"), {
+        text: "{{ ticket.code }}",
+        width: 220,
+        height: 220,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    };
+
+    function copyTicketLink() {
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        const btn = document.getElementById("btnCopy");
+        const oldText = btn.innerHTML;
+        btn.innerHTML = "✅ ¡Copiado!";
+        setTimeout(() => btn.innerHTML = oldText, 2000);
+      });
+    }
+  </script>
+
+</body>
+</html>

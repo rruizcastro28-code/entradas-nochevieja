@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Control de Acceso / Puerta - {{ settings.event_name }}</title>
+  <style>
+    :root {
+      --bg: #0a0f1d;
+      --card: #151d30;
+      --border: #26334d;
+      --gold: #f59e0b;
+      --green: #10b981;
+      --red: #ef4444;
+      --text: #f9fafb;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Bar */
+    .top-bar {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .event-info h1 { font-size: 15px; font-weight: 700; color: #fff; }
+    .event-info p { font-size: 12px; color: var(--gold); }
+    .capacity-badge {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid var(--gold);
+      padding: 6px 12px;
+      border-radius: 20px;
+      text-align: right;
+    }
+    .cap-num { font-size: 14px; font-weight: bold; color: #fff; }
+    .cap-label { font-size: 10px; text-transform: uppercase; color: var(--gold); }
+
+    /* Scanner View Area */
+    .scanner-container {
+      position: relative;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      overflow: hidden;
+      min-height: 320px;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    canvas#qr-canvas {
+      display: none;
+    }
+
+    /* Reticle / Aiming Guide */
+    .reticle {
+      position: relative;
+      width: 240px;
+      height: 240px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-radius: 20px;
+      box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.55);
+      z-index: 10;
+      pointer-events: none;
+    }
+    .reticle::before, .reticle::after {
+      content: '';
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      border-color: var(--gold);
+      border-style: solid;
+    }
+    .reticle::before { top: -2px; left: -2px; border-width: 4px 0 0 4px; border-top-left-radius: 18px; }
+    .reticle::after { bottom: -2px; right: -2px; border-width: 0 4px 4px 0; border-bottom-right-radius: 18px; }
+    .reticle-corner-tr {
+      position: absolute; top: -2px; right: -2px; width: 28px; height: 28px;
+      border-style: solid; border-color: var(--gold); border-width: 4px 4px 0 0; border-top-right-radius: 18px;
+    }
+    .reticle-corner-bl {
+      position: absolute; bottom: -2px; left: -2px; width: 28px; height: 28px;
+      border-style: solid; border-color: var(--gold); border-width: 0 0 4px 4px; border-bottom-left-radius: 18px;
+    }
+
+    .reticle-laser {
+      position: absolute;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #ef4444, transparent);
+      top: 50%;
+      animation: scan 2s infinite alternate ease-in-out;
+    }
+    @keyframes scan {
+      0% { top: 10%; opacity: 0.2; }
+      100% { top: 90%; opacity: 1; }
+    }
+
+    .scanner-controls {
+      position: absolute;
+      bottom: 16px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      z-index: 20;
+    }
+    .ctrl-btn {
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+    }
+    .ctrl-btn-primary {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      border-color: #3b82f6;
+    }
+
+    /* Camera Help / Fallback box */
+    .cam-help-box {
+      position: absolute;
+      z-index: 25;
+      background: rgba(17, 24, 39, 0.96);
+      border: 1px solid #374151;
+      padding: 22px;
+      border-radius: 18px;
+      max-width: 330px;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+      display: none;
+    }
+
+    /* Modal / Result Overlay */
+    .result-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 50;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+      animation: fadeIn 0.2s ease-out;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    .result-valid { background: rgba(6, 78, 59, 0.96); }
+    .result-used { background: rgba(127, 29, 29, 0.96); }
+    .result-error { background: rgba(88, 28, 28, 0.96); }
+
+    .result-badge {
+      font-size: 26px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 15px;
+    }
+    .result-card {
+      background: #111827;
+      border-radius: 18px;
+      padding: 22px;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      border: 2px solid #374151;
+      text-align: left;
+    }
+    .res-num { font-size: 13px; font-weight: 700; color: var(--gold); letter-spacing: 1px; text-transform: uppercase; }
+    .res-name { font-size: 22px; font-weight: 800; color: #fff; margin: 4px 0 10px 0; }
+    .res-dni-box {
+      background: #1f2937;
+      border: 2px solid var(--gold);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .res-dni-label { font-size: 11px; text-transform: uppercase; color: #9ca3af; font-weight: 600; }
+    .res-dni-val { font-size: 28px; font-weight: 900; color: #fbbf24; font-family: monospace; letter-spacing: 2px; }
+    .dni-alert-check {
+      font-size: 12px;
+      color: #fef08a;
+      font-weight: bold;
+      text-align: center;
+      margin-top: 4px;
+    }
+
+    .btn-next {
+      margin-top: 18px;
+      width: 100%;
+      background: #fff;
+      color: #000;
+      border: none;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 800;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    /* Manual Search Section */
+    .manual-section {
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      padding: 14px 16px;
+    }
+    .manual-title { font-size: 12px; font-weight: 600; text-transform: uppercase; color: #9ca3af; margin-bottom: 8px; }
+    .manual-form { display: flex; gap: 8px; }
+    .manual-input {
+      flex: 1;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 15px;
+      text-transform: uppercase;
+    }
+    .manual-input:focus { outline: none; border-color: var(--gold); }
+    .manual-btn {
+      background: var(--gold);
+      color: #000;
+      font-weight: 700;
+      border: none;
+      padding: 0 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .links-footer {
+      display: flex;
+      justify-content: space-around;
+      padding: 10px;
+      background: #0b0f19;
+      font-size: 13px;
+    }
+    .links-footer a { color: #9ca3af; text-decoration: none; }
+  </style>
+  <script src="/static/jsqr.min.js"></script>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="event-info">
+      <h1>🚪 Control Puerta Nochevieja</h1>
+      <p>{{ settings.event_name }}</p>
+    </div>
+    <div class="capacity-badge">
+      <div class="cap-num" id="statCheckedIn">0 / {{ settings.max_capacity }}</div>
+      <div class="cap-label">Dentro en Sala</div>
+    </div>
+  </div>
+
+  <!-- Scanner Container -->
+  <div class="scanner-container">
+    <video id="video" playsinline></video>
+    <canvas id="qr-canvas"></canvas>
+
+    <div class="reticle" id="reticle">
+      <div class="reticle-corner-tr"></div>
+      <div class="reticle-corner-bl"></div>
+      <div class="reticle-laser"></div>
+    </div>
+
+    <!-- Help / Alternative Cam Trigger Box -->
+    <div class="cam-help-box" id="cameraHelpBox">
+      <div style="font-size: 32px; margin-bottom: 6px;">📷</div>
+      <h3 style="color: #fff; font-size: 15px; margin-bottom: 6px;" id="camHelpTitle">Cámara en Espera</h3>
+      <p style="font-size: 12px; color: #9ca3af; margin-bottom: 14px; line-height: 1.4;" id="camHelpMsg">
+        Para activar la cámara pulsa abajo o usa el botón de captura nativa:
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <button class="ctrl-btn ctrl-btn-primary" onclick="startCamera()" style="justify-content: center;">
+          ▶️ Activar Cámara Web
+        </button>
+        <label class="ctrl-btn" style="justify-content: center; background: #059669; border-color: #10b981; cursor: pointer;">
+          📸 Tomar Foto del QR
+          <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleFileScan(this)">
+        </label>
+      </div>
+    </div>
+
+    <div class="scanner-controls">
+      <button class="ctrl-btn" onclick="toggleCamera()">🔄 Girar</button>
+      <label class="ctrl-btn ctrl-btn-primary" style="cursor: pointer;" title="Toma foto del QR en cualquier teléfono">
+        📸 Foto QR
+        <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleFileScan(this)">
+      </label>
+      <button class="ctrl-btn" onclick="toggleAudio()" id="btnAudio">🔊 ON</button>
+    </div>
+
+    <!-- Result Overlay -->
+    <div class="result-overlay" id="resultOverlay">
+      <div class="result-badge" id="resBadge">VÁLIDA</div>
+      
+      <div class="result-card">
+        <div class="res-num" id="resTicketNum">Entrada #001</div>
+        <div class="res-name" id="resName">Nombre Asistente</div>
+
+        <div class="res-dni-box">
+          <div class="res-dni-label">Cotejar DNI Físico con:</div>
+          <div class="res-dni-val" id="resDni">12345678X</div>
+          <div class="dni-alert-check">⚠️ PEDIR DNI ORIGINAL AHORA</div>
+        </div>
+
+        <div id="resExtra" style="font-size: 13px; color: #9ca3af; margin-top: 8px;"></div>
+
+        <button class="btn-next" onclick="resumeScanning()">👉 Siguiente Asistente</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manual Entry Fallback / Barcode Gun Target -->
+  <div class="manual-section">
+    <div class="manual-title">Validación manual o lector láser (DNI o Código)</div>
+    <form class="manual-form" onsubmit="handleManualSubmit(event)">
+      <input type="text" id="manualInput" class="manual-input" placeholder="Ej: 12345678Z, Nº 42 o disparo láser..." autocomplete="off" autocorrect="off" autocapitalize="characters">
+      <button type="submit" class="manual-btn">Comprobar</button>
+    </form>
+  </div>
+
+  <div class="links-footer">
+    <a href="/admin">📊 Panel Taquilla y Asistentes</a>
+    <a href="/scanner" style="color: var(--gold);">🔄 Recargar Escáner</a>
+  </div>
+
+  <!-- Lock Screen for Door Security -->
+  <div id="doorLockScreen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0a0f1d; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: #151d30; border: 1px solid #26334d; border-radius: 18px; padding: 32px 24px; width: 100%; max-width: 340px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
+      <div style="font-size: 40px; margin-bottom: 12px;">🚪</div>
+      <h2 style="color: #fff; font-size: 19px; font-weight: 800; margin-bottom: 6px;">Control de Acceso</h2>
+      <p style="color: var(--gold); font-size: 13px; margin-bottom: 22px;">{{ settings.event_name }}</p>
+      
+      <form onsubmit="handleDoorPinSubmit(event)">
+        <div style="margin-bottom: 16px;">
+          <input type="password" id="doorPinInput" placeholder="PIN de acceso" style="text-align: center; font-size: 20px; letter-spacing: 3px; padding: 12px; width: 100%; background: #0f172a; border: 1px solid var(--border); border-radius: 10px; color: #fff;" autofocus>
+        </div>
+        <button type="submit" class="ctrl-btn ctrl-btn-primary" style="width: 100%; justify-content: center; padding: 14px; font-size: 15px; border-radius: 10px;">
+          Abrir Escáner
+        </button>
+      </form>
+      <div id="doorPinError" style="display: none; color: #f87171; font-size: 12px; margin-top: 12px; font-weight: bold;">PIN incorrecto.</div>
+    </div>
+  </div>
+
+  <script>
+    const EXPECTED_DOOR_PIN = "{{ settings.door_pin }}";
+  </script>
+  <script src="/static/scanner.js"></script>
+</body>
+</html>
